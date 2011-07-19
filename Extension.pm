@@ -52,4 +52,27 @@ sub _replace_profanity {
     return "****";
 }
 
+sub mailer_before_send {
+    my ($self, $args) = @_;
+    my $email = $args->{'email'};
+    
+    my $author = $email->header("X-Bugzilla-Who");
+    $author = new Bugzilla::User({ name => $author });
+    
+    my $recipient = $email->header("To");
+    $recipient = new Bugzilla::User({ name => $recipient });
+    
+    if ($author->id && 
+        !$author->in_group('editbugs') &&
+        $author->id ne $recipient->id) 
+    {
+        my $body = $email->body_str();
+
+        my $offensive = RE_profanity();
+        $body =~ s/$offensive/\*\*\*\*/g;
+    
+        $email->body_str_set($body);
+    }
+}
+
 __PACKAGE__->NAME;
