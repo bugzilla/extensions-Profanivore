@@ -56,22 +56,30 @@ sub mailer_before_send {
     my ($self, $args) = @_;
     my $email = $args->{'email'};
     
-    my $author = $email->header("X-Bugzilla-Who");
-    $author = new Bugzilla::User({ name => $author });
-    
+    my $author    = $email->header("X-Bugzilla-Who");
     my $recipient = $email->header("To");
-    $recipient = new Bugzilla::User({ name => $recipient });
     
-    if ($author->id && 
-        !$author->in_group('editbugs') &&
-        $author->id ne $recipient->id) 
-    {
-        my $body = $email->body_str();
+    if ($author && $recipient) {
+        my $email_suffix = Bugzilla->params->{'emailsuffix'};
+        if ($email_suffix ne '') {
+            $recipient =~ s/\Q$email_suffix\E$//;
+            $author    =~ s/\Q$email_suffix\E$//;
+        }
+        
+        $author    = new Bugzilla::User({ name => $author });
+        $recipient = new Bugzilla::User({ name => $recipient });
+    
+        if ($author->id && 
+            !$author->in_group('editbugs') &&
+            $author->id ne $recipient->id) 
+        {
+            my $body = $email->body_str();
 
-        my $offensive = RE_profanity();
-        $body =~ s/$offensive/\*\*\*\*/g;
-    
-        $email->body_str_set($body);
+            my $offensive = RE_profanity();
+            $body =~ s/$offensive/****/g;
+
+            $email->body_str_set($body);
+        }
     }
 }
 
